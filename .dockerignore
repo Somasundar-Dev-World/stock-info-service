@@ -1,0 +1,31 @@
+# Ignore build artifacts and temporary files
+target/
+*.class
+
+# IDE files
+.idea/
+*.iml
+*.iws
+.vscode/
+
+# Maven wrapper cache
+.mvn/wrapper/maven-wrapper.jar
+
+# Git
+.git/
+.gitignore
+
+# Logs
+*.log
+logs/
+
+# Test reports
+surefire-reports/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment override files (may contain secrets)
+.env.local
+.env.production

@@ -1,0 +1,89 @@
+# ============================================================
+# docker-compose.yml - Local Development & Deployment
+# ============================================================
+# Usage:
+#   Start:   docker-compose up -d
+#   Stop:    docker-compose down
+#   Logs:    docker-compose logs -f stock-info-service
+#   Rebuild: docker-compose up -d --build
+# ============================================================
+
+version: "3.9"
+
+services:
+
+  # ----------------------------------------------------------
+  # stock-info-service - Main Microservice
+  # ----------------------------------------------------------
+  stock-info-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime               # Use the optimized runtime stage
+    image: stock-info-service:latest
+    container_name: stock-info-service
+    restart: unless-stopped
+
+    ports:
+      - "${HOST_PORT:-8080}:8080"   # Host port configurable via .env
+
+    environment:
+      # Server settings
+      SERVER_PORT: 8080
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-default}
+
+      # Alpha Vantage API key
+      # Override with: ALPHA_VANTAGE_API_KEY=your_key docker-compose up
+      # Or add to a .env file in this directory
+      ALPHA_VANTAGE_API_KEY: ${ALPHA_VANTAGE_API_KEY:-demo}
+
+      # JVM tuning
+      JAVA_OPTS: >-
+        -XX:+UseContainerSupport
+        -XX:MaxRAMPercentage=75.0
+        -XX:+UseG1GC
+
+    # Resource limits - prevents the container from consuming all host memory
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+        reservations:
+          memory: 256M
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
+
+    # Log configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ----------------------------------------------------------
+  # (Optional) Nginx reverse proxy for cloud-like routing
+  # Uncomment the section below if you want to expose the
+  # service behind a proper reverse proxy on port 80.
+  # ----------------------------------------------------------
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: nginx-proxy
+  #   ports:
+  #     - "80:80"
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/conf.d/default.conf
+  #   depends_on:
+  #     stock-info-service:
+  #       condition: service_healthy
+  #   restart: unless-stopped
+
+networks:
+  default:
+    name: stock-info-network
+    driver: bridge

@@ -1,0 +1,855 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "stock-info-service",
+    "description": "# Stock Info Service API\n\nA Spring Boot microservice that retrieves real-time stock market details by **ticker symbol** (e.g., `AAPL`) or **company name** (e.g., `Apple`).\n\n## Environments\n- **Local** → runs on `http://localhost:8080`\n- **Cloud** → set your deployed cloud URL in the Cloud environment\n\n## Usage\n1. Import this collection into Postman\n2. Import both environment files (`local.postman_environment.json` and `cloud.postman_environment.json`)\n3. Select an environment from the top-right dropdown\n4. Run any request!\n\n## API Key\nTo get live data for all tickers, get a free key at https://www.alphavantage.co/support/#api-key\nWith the `demo` key, only `IBM` returns live Alpha Vantage data; all others use the mock engine.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "{{baseUrl}}",
+      "type": "string",
+      "description": "Set via environment selection (Local or Cloud)"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health & Monitoring",
+      "description": "Actuator endpoints for health checks and service monitoring. Use these for load balancer probes and cloud readiness checks.",
+      "item": [
+        {
+          "name": "Health Check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Service status is UP\", function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql(\"UP\");",
+                  "});",
+                  "",
+                  "pm.test(\"Response time is acceptable\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["actuator", "health"]
+            },
+            "description": "Returns the health status of the service. Used by load balancers and Kubernetes liveness/readiness probes."
+          },
+          "response": [
+            {
+              "name": "200 OK - Service Healthy",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/actuator/health",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["actuator", "health"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [{"key": "Content-Type", "value": "application/json"}],
+              "body": "{\n    \"status\": \"UP\",\n    \"components\": {\n        \"diskSpace\": { \"status\": \"UP\" },\n        \"ping\": { \"status\": \"UP\" }\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Service Info",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/info",
+              "host": ["{{baseUrl}}"],
+              "path": ["actuator", "info"]
+            },
+            "description": "Returns application metadata: name, version, and description."
+          },
+          "response": []
+        },
+        {
+          "name": "Metrics",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/metrics",
+              "host": ["{{baseUrl}}"],
+              "path": ["actuator", "metrics"]
+            },
+            "description": "Returns available application metrics (JVM memory, HTTP requests, etc.)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Stock Lookup - POST (by body)",
+      "description": "POST endpoint that accepts a JSON request body containing either a ticker symbol (e.g., `AAPL`) or a company name (e.g., `Apple`). This is the primary endpoint.",
+      "item": [
+        {
+          "name": "Lookup by Ticker - AAPL (Apple)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has required stock fields\", function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('symbol');",
+                  "    pm.expect(json).to.have.property('companyName');",
+                  "    pm.expect(json).to.have.property('price');",
+                  "    pm.expect(json).to.have.property('change');",
+                  "    pm.expect(json).to.have.property('changePercent');",
+                  "    pm.expect(json).to.have.property('volume');",
+                  "    pm.expect(json).to.have.property('dataSource');",
+                  "});",
+                  "",
+                  "pm.test(\"Symbol is AAPL\", function () {",
+                  "    pm.expect(pm.response.json().symbol).to.eql(\"AAPL\");",
+                  "});",
+                  "",
+                  "pm.test(\"Price is a positive number\", function () {",
+                  "    pm.expect(pm.response.json().price).to.be.above(0);",
+                  "});",
+                  "",
+                  "// Store the price for use in other requests",
+                  "const price = pm.response.json().price;",
+                  "pm.environment.set('lastLookedUpPrice', price);",
+                  "console.log('AAPL price stored:', price);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"query\": \"AAPL\"\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/stocks/lookup",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "stocks", "lookup"]
+            },
+            "description": "Fetches stock details for Apple Inc. (AAPL) by ticker symbol."
+          },
+          "response": [
+            {
+              "name": "200 OK - Apple Inc.",
+              "originalRequest": {
+                "method": "POST",
+                "header": [{"key": "Content-Type", "value": "application/json"}],
+                "body": {"mode": "raw", "raw": "{\n    \"query\": \"AAPL\"\n}"},
+                "url": {"raw": "{{baseUrl}}/api/v1/stocks/lookup", "host": ["{{baseUrl}}"], "path": ["api","v1","stocks","lookup"]}
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [{"key": "Content-Type", "value": "application/json"}],
+              "body": "{\n    \"symbol\": \"AAPL\",\n    \"companyName\": \"Apple Inc.\",\n    \"exchange\": \"NASDAQ\",\n    \"currency\": \"USD\",\n    \"price\": 191.17,\n    \"open\": 186.14,\n    \"high\": 191.81,\n    \"low\": 183.95,\n    \"previousClose\": 187.2,\n    \"change\": 3.97,\n    \"changePercent\": \"2.1207%\",\n    \"volume\": 50218336,\n    \"marketCap\": \"$2.89T\",\n    \"peRatio\": \"31.2\",\n    \"week52High\": 210.5,\n    \"week52Low\": 164.08,\n    \"latestTradingDay\": \"2026-06-15\",\n    \"dataSource\": \"Mock Data Engine (Alpha Vantage fallback)\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Lookup by Ticker - MSFT (Microsoft)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Symbol is MSFT\", function () {",
+                  "    pm.expect(pm.response.json().symbol).to.eql(\"MSFT\");",
+                  "});",
+                  "pm.test(\"Price is positive\", function () {",
+                  "    pm.expect(pm.response.json().price).to.be.above(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"query\": \"MSFT\"\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/stocks/lookup",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "stocks", "lookup"]
+            },
+            "description": "Fetches stock details for Microsoft Corporation (MSFT)."
+          },
+          "response": []
+        },
+        {
+          "name": "Lookup by Ticker - NVDA (NVIDIA)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Symbol is NVDA\", function () { pm.expect(pm.response.json().symbol).to.eql(\"NVDA\"); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"query\": \"NVDA\"\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/stocks/lookup",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "stocks", "lookup"]
+            },
+            "description": "Fetches stock details for NVIDIA Corporation (NVDA)."
+          },
+          "response": []
+        },
+        {
+          "name": "Lookup by Ticker - TSLA (Tesla)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Symbol is TSLA\", function () { pm.expect(pm.response.json().symbol).to.eql(\"TSLA\"); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"query\": \"TSLA\"\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/stocks/lookup",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "stocks", "lookup"]
+            },
+            "description": "Fetches stock details for Tesla Inc. (TSLA)."
+          },
+          "response": []
+        },
+        {
+          "name": "Lookup by Ticker - IBM (Live Alpha Vantage)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Symbol is IBM\", function () {",
+                  "    pm.expect(pm.response.json().symbol).to.eql(\"IBM\");",
+                  "});",
+                  "pm.test(\"Data source is Alpha Vantage or Mock\", function () {",
+                  "    const src = pm.response.json().dataSource;",
+                  "    pm.expect(src).to.be.oneOf([",
+                  "        'Alpha Vantage (Live)',",
+                  "        'Mock Data Engine (Alpha Vantage fallback)'",
+                  "    ]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"query\": \"IBM\"\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/stocks/lookup",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "stocks", "lookup"]
+            },
+            "description": "IBM returns LIVE data from Alpha Vantage even with the `demo` API key."
+          },
+          "response": []
+        },
+        {
+          "name": "Lookup by Ticker - META (Meta Platforms)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Symbol is META\", function () { pm.expect(pm.response.json().symbol).to.eql(\"META\"); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"query\": \"META\"\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/stocks/lookup",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "stocks", "lookup"]
+            },
+            "description": "Fetches stock details for Meta Platforms Inc. (META / Facebook)."
+          },
+          "response": []
+        },
+        {
+          "name": "Lookup by Ticker - Custom (use variable)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Response has symbol\", function () {",
+                  "    pm.expect(pm.response.json()).to.have.property('symbol');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"query\": \"{{stockSymbol}}\"\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/stocks/lookup",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "stocks", "lookup"]
+            },
+            "description": "Uses the `stockSymbol` environment variable. Set it in your environment to look up any ticker (e.g., `AMZN`, `GOOGL`, `JPM`)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Stock Lookup - POST (by company name)",
+      "description": "Same POST endpoint but sending a company name instead of a ticker. The service resolves the name to a ticker automatically.",
+      "item": [
+        {
+          "name": "Lookup by Name - Apple",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Resolved to AAPL\", function () {",
+                  "    pm.expect(pm.response.json().symbol).to.eql(\"AAPL\");",
+                  "});",
+                  "pm.test(\"Company name contains Apple\", function () {",
+                  "    pm.expect(pm.response.json().companyName).to.include(\"Apple\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"query\": \"Apple\"\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/stocks/lookup",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "stocks", "lookup"]
+            },
+            "description": "Sends company name 'Apple' — the service auto-resolves it to AAPL."
+          },
+          "response": []
+        },
+        {
+          "name": "Lookup by Name - Microsoft",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Resolved to MSFT\", function () { pm.expect(pm.response.json().symbol).to.eql(\"MSFT\"); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"query\": \"Microsoft\"\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/stocks/lookup",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "stocks", "lookup"]
+            },
+            "description": "Sends company name 'Microsoft' — resolved to MSFT."
+          },
+          "response": []
+        },
+        {
+          "name": "Lookup by Name - Tesla",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Resolved to TSLA\", function () { pm.expect(pm.response.json().symbol).to.eql(\"TSLA\"); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"query\": \"Tesla\"\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/stocks/lookup",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "stocks", "lookup"]
+            },
+            "description": "Sends company name 'Tesla' — resolved to TSLA."
+          },
+          "response": []
+        },
+        {
+          "name": "Lookup by Name - Google (Alphabet)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Resolved to GOOGL or Alphabet\", function () {",
+                  "    pm.expect(pm.response.json().symbol).to.eql(\"GOOGL\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"query\": \"Google\"\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/stocks/lookup",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "stocks", "lookup"]
+            },
+            "description": "Sends company name 'Google' — resolved to GOOGL (Alphabet Inc.)."
+          },
+          "response": []
+        },
+        {
+          "name": "Lookup by Name - Netflix",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"query\": \"Netflix\"\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/stocks/lookup",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "stocks", "lookup"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Lookup by Name - Nvidia",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"query\": \"Nvidia\"\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/stocks/lookup",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "stocks", "lookup"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Stock Lookup - GET (by path variable)",
+      "description": "Convenience GET endpoint. Pass the ticker symbol directly in the URL path.",
+      "item": [
+        {
+          "name": "GET /lookup/AAPL",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Symbol is AAPL\", function () { pm.expect(pm.response.json().symbol).to.eql(\"AAPL\"); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/stocks/lookup/AAPL",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "stocks", "lookup", "AAPL"]
+            },
+            "description": "GET convenience endpoint for Apple (AAPL)."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /lookup/TSLA",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Symbol is TSLA\", function () { pm.expect(pm.response.json().symbol).to.eql(\"TSLA\"); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/stocks/lookup/TSLA",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "stocks", "lookup", "TSLA"]
+            },
+            "description": "GET convenience endpoint for Tesla (TSLA)."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /lookup/{symbol} - Custom (use variable)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/stocks/lookup/{{stockSymbol}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "stocks", "lookup", "{{stockSymbol}}"]
+            },
+            "description": "Uses the `stockSymbol` environment variable. Change it in your environment to look up any ticker dynamically."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Error Scenarios",
+      "description": "Tests for expected error responses — validations, not-found cases, and malformed requests.",
+      "item": [
+        {
+          "name": "Validation - Empty Query",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 400\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test(\"Error is Validation Failed\", function () {",
+                  "    pm.expect(pm.response.json().error).to.eql(\"Validation Failed\");",
+                  "});",
+                  "pm.test(\"Validation errors present\", function () {",
+                  "    pm.expect(pm.response.json()).to.have.property('validationErrors');",
+                  "    pm.expect(pm.response.json().validationErrors).to.have.property('query');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"query\": \"\"\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/stocks/lookup",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "stocks", "lookup"]
+            },
+            "description": "Sends an empty string query — expects HTTP 400 with validation error details."
+          },
+          "response": [
+            {
+              "name": "400 Bad Request - Validation Failed",
+              "originalRequest": {
+                "method": "POST",
+                "header": [{"key": "Content-Type", "value": "application/json"}],
+                "body": {"mode": "raw", "raw": "{\n    \"query\": \"\"\n}"},
+                "url": {"raw": "{{baseUrl}}/api/v1/stocks/lookup", "host": ["{{baseUrl}}"], "path": ["api","v1","stocks","lookup"]}
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [{"key": "Content-Type", "value": "application/json"}],
+              "body": "{\n    \"status\": 400,\n    \"error\": \"Validation Failed\",\n    \"message\": \"One or more request fields failed validation.\",\n    \"path\": \"/api/v1/stocks/lookup\",\n    \"timestamp\": \"2026-06-15T23:50:20.3055414\",\n    \"validationErrors\": {\n        \"query\": \"Query must be between 1 and 100 characters.\"\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Validation - Missing query field",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 400\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/stocks/lookup",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "stocks", "lookup"]
+            },
+            "description": "Sends an empty JSON body (missing `query` field) — expects HTTP 400."
+          },
+          "response": []
+        },
+        {
+          "name": "Not Found - Unknown Symbol",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 404\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test(\"Error is Stock Not Found\", function () {",
+                  "    pm.expect(pm.response.json().error).to.eql(\"Stock Not Found\");",
+                  "});",
+                  "pm.test(\"Message mentions the query\", function () {",
+                  "    pm.expect(pm.response.json().message).to.include('XYZZZZ');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"query\": \"XYZZZZ\"\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/stocks/lookup",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "stocks", "lookup"]
+            },
+            "description": "Sends an unknown ticker — expects HTTP 404 Stock Not Found."
+          },
+          "response": [
+            {
+              "name": "404 Not Found",
+              "originalRequest": {
+                "method": "POST",
+                "header": [{"key": "Content-Type", "value": "application/json"}],
+                "body": {"mode": "raw", "raw": "{\n    \"query\": \"XYZZZZ\"\n}"},
+                "url": {"raw": "{{baseUrl}}/api/v1/stocks/lookup", "host": ["{{baseUrl}}"], "path": ["api","v1","stocks","lookup"]}
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [{"key": "Content-Type", "value": "application/json"}],
+              "body": "{\n    \"status\": 404,\n    \"error\": \"Stock Not Found\",\n    \"message\": \"No stock data found for query: 'XYZZZZ'\",\n    \"path\": \"/api/v1/stocks/lookup\",\n    \"timestamp\": \"2026-06-15T23:50:20.4686849\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Validation - Query Too Long (101 chars)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 400\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"query\": \"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\"\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/stocks/lookup",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "stocks", "lookup"]
+            },
+            "description": "Sends a 101-character query — exceeds the @Size(max=100) validation constraint."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
