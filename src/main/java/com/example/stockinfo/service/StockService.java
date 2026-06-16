@@ -128,41 +128,64 @@ public class StockService {
      */
     public StockResponse lookupStock(String query) {
         String trimmedQuery = query.trim();
-        log.info("Looking up stock for query: '{}'", trimmedQuery);
+        log.info("[SERVICE] ========== BEGIN STOCK LOOKUP ==========");
+        log.info("[SERVICE] Raw query received: '{}'", trimmedQuery);
+        log.info("[SERVICE] Query type detection: isLikelyTicker={}", isLikelyTicker(trimmedQuery));
 
         // Step 1: Determine if query is ticker-like or name-like
         String resolvedTicker = resolveToTicker(trimmedQuery);
+        if (resolvedTicker != null) {
+            log.info("[SERVICE] Step 1 - Resolved '{}' → ticker '{}' via local alias map", trimmedQuery, resolvedTicker);
+        } else {
+            log.info("[SERVICE] Step 1 - Could not resolve '{}' via local alias map", trimmedQuery);
+        }
 
         // Step 2: Try live Alpha Vantage data
         if (resolvedTicker != null) {
+            log.info("[SERVICE] Step 2 - Attempting Alpha Vantage GLOBAL_QUOTE for '{}'", resolvedTicker);
             StockResponse liveResponse = tryAlphaVantageQuote(resolvedTicker);
             if (liveResponse != null) {
-                log.info("Returning live data from Alpha Vantage for '{}'", resolvedTicker);
+                log.info("[SERVICE] Step 2 - SUCCESS: Live data from Alpha Vantage for '{}' | price={}",
+                        resolvedTicker, liveResponse.getPrice());
+                log.info("[SERVICE] ========== END STOCK LOOKUP (Alpha Vantage Live) ==========");
                 return liveResponse;
             }
+            log.info("[SERVICE] Step 2 - Alpha Vantage returned no data for '{}', proceeding to fallback", resolvedTicker);
         }
 
         // Step 3: Try Alpha Vantage Symbol Search if it could be a name
         if (!isLikelyTicker(trimmedQuery)) {
+            log.info("[SERVICE] Step 3 - Query '{}' looks like a company name, trying Alpha Vantage Symbol Search", trimmedQuery);
             String foundTicker = tryAlphaVantageSymbolSearch(trimmedQuery);
             if (foundTicker != null) {
+                log.info("[SERVICE] Step 3 - Symbol Search resolved '{}' → ticker '{}'", trimmedQuery, foundTicker);
                 StockResponse liveResponse = tryAlphaVantageQuote(foundTicker);
                 if (liveResponse != null) {
-                    log.info("Returning live data from Alpha Vantage for searched symbol '{}'", foundTicker);
+                    log.info("[SERVICE] Step 3 - SUCCESS: Live data for searched symbol '{}' | price={}",
+                            foundTicker, liveResponse.getPrice());
+                    log.info("[SERVICE] ========== END STOCK LOOKUP (Alpha Vantage Symbol Search) ==========");
                     return liveResponse;
                 }
-                resolvedTicker = foundTicker; // use for fallback
+                log.info("[SERVICE] Step 3 - Alpha Vantage quote failed for '{}', falling back to mock", foundTicker);
+                resolvedTicker = foundTicker;
+            } else {
+                log.info("[SERVICE] Step 3 - Symbol Search returned no results for '{}'", trimmedQuery);
             }
         }
 
         // Step 4: Mock data fallback
         String tickerForMock = (resolvedTicker != null) ? resolvedTicker.toUpperCase() : trimmedQuery.toUpperCase();
+        log.info("[SERVICE] Step 4 - Trying mock data engine for ticker '{}'", tickerForMock);
         StockResponse mockResponse = getMockResponse(tickerForMock, trimmedQuery);
         if (mockResponse != null) {
-            log.info("Returning mock data for '{}'", tickerForMock);
+            log.info("[SERVICE] Step 4 - SUCCESS: Mock data returned for '{}' | symbol='{}' | price={}",
+                    tickerForMock, mockResponse.getSymbol(), mockResponse.getPrice());
+            log.info("[SERVICE] ========== END STOCK LOOKUP (Mock Engine) ==========");
             return mockResponse;
         }
 
+        log.warn("[SERVICE] Step 4 - Mock engine has no data for '{}'. Throwing StockNotFoundException.", tickerForMock);
+        log.info("[SERVICE] ========== END STOCK LOOKUP (NOT FOUND) ==========");
         throw new StockNotFoundException(trimmedQuery);
     }
 
@@ -174,14 +197,15 @@ public class StockService {
      * Resolves the query to a ticker symbol using the local alias map.
      */
     private String resolveToTicker(String query) {
-        // If it's already ticker-like, return as-is
         if (isLikelyTicker(query)) {
+            log.debug("[SERVICE] '{}' matches ticker pattern, using as-is → '{}'", query, query.toUpperCase());
             return query.toUpperCase();
         }
-        // Otherwise try the company-name lookup table
         String lower = query.toLowerCase();
         for (Map.Entry<String, String> entry : COMPANY_NAME_TO_TICKER.entrySet()) {
             if (lower.contains(entry.getKey())) {
+                log.debug("[SERVICE] Company name '{}' matched alias '{}' → ticker '{}'",
+                        query, entry.getKey(), entry.getValue());
                 return entry.getValue();
             }
         }
@@ -208,35 +232,53 @@ public class StockService {
                     .build()
                     .toUriString();
 
-            log.debug("Calling Alpha Vantage GLOBAL_QUOTE for '{}'", symbol);
+            log.debug("[SERVICE] Alpha Vantage GLOBAL_QUOTE URL: {}", url.replace(apiKey, "***"));
+            long callStart = System.currentTimeMillis();
             ResponseEntity<String> responseEntity = restTemplate.exchange(
                     url, HttpMethod.GET, buildHttpEntity(), String.class);
+            log.debug("[SERVICE] Alpha Vantage GLOBAL_QUOTE responded in {}ms", System.currentTimeMillis() - callStart);
 
             JsonNode root = objectMapper.readTree(responseEntity.getBody());
-            JsonNode quoteNode = root.path("Global Quote");
 
-            // Check for error or empty response
-            if (root.has("Note") || root.has("Information") || quoteNode.isMissingNode() || quoteNode.isEmpty()) {
-                log.warn("Alpha Vantage returned no usable quote for '{}'. Will use fallback.", symbol);
+            // Log rate limit / API notes from Alpha Vantage
+            if (root.has("Note")) {
+                log.warn("[SERVICE] Alpha Vantage API Note (likely rate-limited): {}", root.path("Note").asText());
+                return null;
+            }
+            if (root.has("Information")) {
+                log.warn("[SERVICE] Alpha Vantage API Information message: {}", root.path("Information").asText());
+                return null;
+            }
+
+            JsonNode quoteNode = root.path("Global Quote");
+            if (quoteNode.isMissingNode() || quoteNode.isEmpty()) {
+                log.warn("[SERVICE] Alpha Vantage returned empty 'Global Quote' for symbol '{}'. " +
+                         "This usually means the demo key does not support this ticker.", symbol);
                 return null;
             }
 
             String price = quoteNode.path("05. price").asText();
-            String open  = quoteNode.path("03. open").asText();
-            String high  = quoteNode.path("04. high").asText();
-            String low   = quoteNode.path("02. low").asText();
-            String prevClose    = quoteNode.path("08. previous close").asText();
-            String change       = quoteNode.path("09. change").asText();
-            String changePct    = quoteNode.path("10. change percent").asText();
-            String volume       = quoteNode.path("06. volume").asText();
-            String tradingDay   = quoteNode.path("07. latest trading day").asText();
-
             if (price == null || price.isBlank() || price.equals("0.0000")) {
+                log.warn("[SERVICE] Alpha Vantage returned zero/blank price for symbol '{}'", symbol);
                 return null;
             }
 
-            // Try to enrich with company info from mock data
+            String open      = quoteNode.path("03. open").asText();
+            String high      = quoteNode.path("04. high").asText();
+            String low       = quoteNode.path("02. low").asText();
+            String prevClose = quoteNode.path("08. previous close").asText();
+            String change    = quoteNode.path("09. change").asText();
+            String changePct = quoteNode.path("10. change percent").asText();
+            String volume    = quoteNode.path("06. volume").asText();
+            String tradingDay = quoteNode.path("07. latest trading day").asText();
+
+            log.info("[SERVICE] Alpha Vantage GLOBAL_QUOTE data: symbol={} price={} change={} changePct={} volume={} tradingDay={}",
+                    symbol, price, change, changePct, volume, tradingDay);
+
             MockStock mockData = MOCK_STOCKS.get(symbol.toUpperCase());
+            if (mockData != null) {
+                log.debug("[SERVICE] Enriching Alpha Vantage response with local metadata for '{}'", symbol);
+            }
 
             return StockResponse.builder()
                     .symbol(quoteNode.path("01. symbol").asText(symbol))
@@ -260,7 +302,8 @@ public class StockService {
                     .build();
 
         } catch (Exception e) {
-            log.warn("Alpha Vantage quote call failed for '{}': {}", symbol, e.getMessage());
+            log.warn("[SERVICE] Alpha Vantage GLOBAL_QUOTE call failed for '{}': {} - {}",
+                    symbol, e.getClass().getSimpleName(), e.getMessage());
             return null;
         }
     }
@@ -278,30 +321,48 @@ public class StockService {
                     .build()
                     .toUriString();
 
-            log.debug("Calling Alpha Vantage SYMBOL_SEARCH for '{}'", companyName);
+            log.debug("[SERVICE] Alpha Vantage SYMBOL_SEARCH URL: {}", url.replace(apiKey, "***"));
+            long callStart = System.currentTimeMillis();
             ResponseEntity<String> responseEntity = restTemplate.exchange(
                     url, HttpMethod.GET, buildHttpEntity(), String.class);
+            log.debug("[SERVICE] Alpha Vantage SYMBOL_SEARCH responded in {}ms", System.currentTimeMillis() - callStart);
 
             JsonNode root = objectMapper.readTree(responseEntity.getBody());
-            JsonNode matches = root.path("bestMatches");
 
-            if (matches.isMissingNode() || matches.isEmpty()) {
+            if (root.has("Note") || root.has("Information")) {
+                log.warn("[SERVICE] Alpha Vantage SYMBOL_SEARCH rate-limited for '{}'", companyName);
                 return null;
             }
+
+            JsonNode matches = root.path("bestMatches");
+            if (matches.isMissingNode() || matches.isEmpty()) {
+                log.info("[SERVICE] Alpha Vantage SYMBOL_SEARCH returned no matches for '{}'", companyName);
+                return null;
+            }
+
+            log.info("[SERVICE] Alpha Vantage SYMBOL_SEARCH returned {} match(es) for '{}'",
+                    matches.size(), companyName);
 
             // Prefer United States equities with highest match score
             for (JsonNode match : matches) {
                 String region = match.path("4. region").asText("");
                 String type   = match.path("3. type").asText("");
+                String ticker = match.path("1. symbol").asText();
+                String score  = match.path("9. matchScore").asText();
+                log.debug("[SERVICE]   Match candidate: symbol={} region={} type={} score={}", ticker, region, type, score);
                 if ("United States".equals(region) && "Equity".equals(type)) {
-                    return match.path("1. symbol").asText();
+                    log.info("[SERVICE] SYMBOL_SEARCH best US match: symbol='{}' score={}", ticker, score);
+                    return ticker;
                 }
             }
             // Fall back to first result
-            return matches.get(0).path("1. symbol").asText();
+            String fallback = matches.get(0).path("1. symbol").asText();
+            log.info("[SERVICE] SYMBOL_SEARCH falling back to first result: symbol='{}'", fallback);
+            return fallback;
 
         } catch (Exception e) {
-            log.warn("Alpha Vantage symbol search failed for '{}': {}", companyName, e.getMessage());
+            log.warn("[SERVICE] Alpha Vantage SYMBOL_SEARCH failed for '{}': {} - {}",
+                    companyName, e.getClass().getSimpleName(), e.getMessage());
             return null;
         }
     }
@@ -314,9 +375,10 @@ public class StockService {
         MockStock stock = MOCK_STOCKS.get(ticker);
 
         if (stock == null) {
-            // Try partial match on ticker
+            log.debug("[SERVICE] Exact ticker '{}' not in mock DB, trying partial match", ticker);
             for (Map.Entry<String, MockStock> entry : MOCK_STOCKS.entrySet()) {
                 if (entry.getKey().startsWith(ticker) || ticker.startsWith(entry.getKey())) {
+                    log.debug("[SERVICE] Partial match found: '{}' → '{}'", ticker, entry.getKey());
                     stock = entry.getValue();
                     break;
                 }
@@ -324,6 +386,7 @@ public class StockService {
         }
 
         if (stock == null) {
+            log.warn("[SERVICE] Mock engine has no data for ticker '{}' (original query: '{}')", ticker, originalQuery);
             return null;
         }
 
@@ -336,6 +399,9 @@ public class StockService {
         double change   = round(price - stock.previousClose);
         String changePct = String.format("%.4f%%", (change / stock.previousClose) * 100);
         long volume     = (long)(stock.volume * (0.85 + Math.random() * 0.3));
+
+        log.info("[SERVICE] Mock engine generated data: symbol='{}' price={} change={} changePct={} volume={}",
+                stock.symbol, price, change, changePct, volume);
 
         return StockResponse.builder()
                 .symbol(stock.symbol)

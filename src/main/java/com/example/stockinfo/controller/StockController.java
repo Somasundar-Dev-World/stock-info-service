@@ -36,39 +36,41 @@ public class StockController {
 
     /**
      * Look up stock details by ticker symbol or company name.
-     *
-     * <p><b>Example Request:</b></p>
-     * <pre>
-     * POST /api/v1/stocks/lookup
-     * Content-Type: application/json
-     *
-     * { "query": "AAPL" }
-     *   -- or --
-     * { "query": "Apple" }
-     * </pre>
-     *
-     * @param request the request body containing the ticker symbol or company name
-     * @return HTTP 200 with full stock details, or appropriate error response
      */
     @PostMapping(value = "/lookup", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<StockResponse> lookupStock(@Valid @RequestBody StockRequest request) {
-        log.info("POST /api/v1/stocks/lookup - query: '{}'", request.getQuery());
+        long start = System.currentTimeMillis();
+        log.info("[CONTROLLER] POST /api/v1/stocks/lookup | query='{}'", request.getQuery());
+
         StockResponse response = stockService.lookupStock(request.getQuery());
+
+        log.info("[CONTROLLER] Returning response | symbol='{}' | company='{}' | price={} | source='{}' | took={}ms",
+                response.getSymbol(),
+                response.getCompanyName(),
+                response.getPrice(),
+                response.getDataSource(),
+                System.currentTimeMillis() - start);
+
         return ResponseEntity.ok(response);
     }
 
     /**
      * Convenience GET endpoint to look up a stock by ticker symbol in the path.
-     *
-     * <p><b>Example:</b> GET /api/v1/stocks/lookup/AAPL</p>
-     *
-     * @param symbol the ticker symbol as a path variable
-     * @return HTTP 200 with full stock details, or appropriate error response
      */
     @GetMapping("/lookup/{symbol}")
     public ResponseEntity<StockResponse> lookupStockBySymbol(@PathVariable String symbol) {
-        log.info("GET /api/v1/stocks/lookup/{}", symbol);
+        long start = System.currentTimeMillis();
+        log.info("[CONTROLLER] GET /api/v1/stocks/lookup/{}", symbol);
+
         StockResponse response = stockService.lookupStock(symbol);
+
+        log.info("[CONTROLLER] Returning response | symbol='{}' | company='{}' | price={} | source='{}' | took={}ms",
+                response.getSymbol(),
+                response.getCompanyName(),
+                response.getPrice(),
+                response.getDataSource(),
+                System.currentTimeMillis() - start);
+
         return ResponseEntity.ok(response);
     }
 }
