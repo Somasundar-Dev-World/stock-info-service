@@ -13,8 +13,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.request.WebRequest;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -36,9 +34,7 @@ public class GlobalExceptionHandler {
                 HttpStatus.NOT_FOUND.value(),
                 "Stock Not Found",
                 ex.getMessage(),
-                getPath(request),
-                LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME),
-                null
+                getPath(request)
         );
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
@@ -49,9 +45,9 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidationExceptions(MethodArgumentNotValidException ex, WebRequest request) {
         Map<String, String> validationErrors = new HashMap<>();
-        ex.getBindingResult().getAllErrors().forEach(error -> {
-            String fieldName = ((FieldError) error).getField();
-            String errorMessage = error.getDefaultMessage();
+        ex.getBindingResult().getAllErrors().forEach(e -> {
+            String fieldName = ((FieldError) e).getField();
+            String errorMessage = e.getDefaultMessage();
             validationErrors.put(fieldName, errorMessage);
         });
 
@@ -62,7 +58,6 @@ public class GlobalExceptionHandler {
                 "Validation Failed",
                 "One or more request fields failed validation.",
                 getPath(request),
-                LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME),
                 validationErrors
         );
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
@@ -78,9 +73,7 @@ public class GlobalExceptionHandler {
                 HttpStatus.BAD_REQUEST.value(),
                 "Malformed Request",
                 "The request body contains invalid or malformed JSON.",
-                getPath(request),
-                LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME),
-                null
+                getPath(request)
         );
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
@@ -97,9 +90,7 @@ public class GlobalExceptionHandler {
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "Internal Server Error",
                 "An unexpected error occurred. Please try again later.",
-                path,
-                LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME),
-                null
+                path
         );
         return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
     }
