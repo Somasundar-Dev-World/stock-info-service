@@ -40,12 +40,13 @@ COPY --from=builder /app/target/extracted/application/ ./
 # Switch to non-root user
 USER appuser
 
-# Expose application port
-EXPOSE 8080
+# Render injects PORT at runtime. Default to 8080 for local use.
+ENV PORT=8080
+EXPOSE $PORT
 
-# Health check for Docker/Kubernetes
-HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1
+# Health check — uses $PORT so it works both locally and on Render/cloud
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT}/actuator/health || exit 1
 
 # JVM tuning for containerized environments
 ENV JAVA_OPTS="-XX:+UseContainerSupport \

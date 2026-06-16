@@ -1,0 +1,51 @@
+# ============================================================
+# render.yaml — Render Blueprint (Infrastructure as Code)
+# ============================================================
+# This file defines the stock-info-service deployment on Render.
+#
+# How it works:
+#   - Every push to the 'main' branch triggers an auto-deploy.
+#   - Render builds the Docker image using the multi-stage Dockerfile.
+#   - Environment variables below can be overridden in the Render Dashboard.
+#
+# First-time setup:
+#   1. Go to https://dashboard.render.com → New → Blueprint
+#   2. Connect your GitHub repo (Somasundar-Dev-World/stock-info-service)
+#   3. Click "Deploy Blueprint"
+# ============================================================
+
+services:
+  - type: web
+    name: stock-info-service
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+
+    # Deploy from the main branch
+    branch: main
+
+    # Use free tier (change to 'starter' or higher for production)
+    plan: free
+
+    # Health check — Render pings this path to verify the service is alive
+    healthCheckPath: /actuator/health
+
+    # Render automatically sets PORT; Spring Boot reads it via ${PORT:8080}
+    # Do NOT set PORT here — Render manages it.
+    envVars:
+      - key: ALPHA_VANTAGE_API_KEY
+        value: demo              # Replace with your key for full live data
+                                 # Or set it as a secret in the Render Dashboard
+      - key: SPRING_PROFILES_ACTIVE
+        value: default
+
+      # JVM settings optimized for Render's free-tier container (512MB RAM)
+      - key: JAVA_OPTS
+        value: >-
+          -XX:+UseContainerSupport
+          -XX:MaxRAMPercentage=75.0
+          -XX:+UseG1GC
+          -Djava.security.egd=file:/dev/./urandom
+
+    # Auto-deploy on every push to main
+    autoDeploy: true
