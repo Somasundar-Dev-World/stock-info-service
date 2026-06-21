@@ -150,6 +150,12 @@ public class StockService {
                         resolvedTicker, liveResponse.getPrice());
                 
                 log.info("[SERVICE] Step 2.5 - Attempting Alpha Vantage NEWS_SENTIMENT for '{}'", resolvedTicker);
+                try {
+                    log.info("[SERVICE] Sleeping 1.5s to avoid Alpha Vantage rate limits...");
+                    Thread.sleep(1500);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
                 List<NewsArticle> news = tryAlphaVantageNews(resolvedTicker);
                 if (news.isEmpty()) {
                     log.info("[SERVICE] Step 2.5 - Live news failed or empty, falling back to mock news");
@@ -196,6 +202,12 @@ public class StockService {
                             foundTicker, liveResponse.getPrice());
                             
                     log.info("[SERVICE] Step 3.5 - Attempting Alpha Vantage NEWS_SENTIMENT for '{}'", foundTicker);
+                    try {
+                        log.info("[SERVICE] Sleeping 1.5s to avoid Alpha Vantage rate limits...");
+                        Thread.sleep(1500);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
                     List<NewsArticle> news = tryAlphaVantageNews(foundTicker);
                     if (news.isEmpty()) {
                         log.info("[SERVICE] Step 3.5 - Live news failed or empty, falling back to mock news");
