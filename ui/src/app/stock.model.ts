@@ -17,6 +17,16 @@ export interface StockResponse {
   week52Low: number;
   latestTradingDay: string;
   dataSource: string;
+  news?: NewsArticle[];
+}
+
+export interface NewsArticle {
+  title: string;
+  url: string;
+  source: string;
+  timePublished: string;
+  summary: string;
+  sentimentLabel: string;
 }
 
 export interface ErrorResponse {

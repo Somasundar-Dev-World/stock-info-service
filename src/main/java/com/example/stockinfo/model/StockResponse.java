@@ -1,6 +1,8 @@
 package com.example.stockinfo.model;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+
+import java.util.List;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
@@ -63,6 +65,9 @@ public class StockResponse {
     @JsonProperty("dataSource")
     private String dataSource;
 
+    @JsonProperty("news")
+    private List<NewsArticle> news;
+
     // Private constructor - use Builder
     private StockResponse() {}
 
@@ -94,6 +99,7 @@ public class StockResponse {
         public Builder week52Low(Double week52Low) { response.week52Low = week52Low; return this; }
         public Builder latestTradingDay(String latestTradingDay) { response.latestTradingDay = latestTradingDay; return this; }
         public Builder dataSource(String dataSource) { response.dataSource = dataSource; return this; }
+        public Builder news(List<NewsArticle> news) { response.news = news; return this; }
 
         public StockResponse build() { return response; }
     }
@@ -119,4 +125,5 @@ public class StockResponse {
     public Double getWeek52Low() { return week52Low; }
     public String getLatestTradingDay() { return latestTradingDay; }
     public String getDataSource() { return dataSource; }
+    public List<NewsArticle> getNews() { return news; }
 }

@@ -100,7 +100,29 @@
         <p>Data Source: <strong>{{ stock.dataSource }}</strong></p>
         <p>Latest Trading Day: {{ stock.latestTradingDay }}</p>
       </div>
-
     </div>
+
+    <!-- News Section -->
+    <div *ngIf="stock.news && stock.news.length > 0" class="news-container fade-in">
+      <h3 class="news-header">Latest Market News</h3>
+      <div class="news-grid">
+        <a *ngFor="let article of stock.news" [href]="article.url" target="_blank" rel="noopener noreferrer" class="news-card glass-panel">
+          <div class="news-meta">
+            <span class="news-source">{{ article.source }}</span>
+            <span class="sentiment-badge" 
+                  [ngClass]="{
+                    'bullish': article.sentimentLabel === 'Bullish' || article.sentimentLabel === 'Somewhat-Bullish',
+                    'bearish': article.sentimentLabel === 'Bearish' || article.sentimentLabel === 'Somewhat-Bearish',
+                    'neutral': article.sentimentLabel === 'Neutral'
+                  }">
+              {{ article.sentimentLabel }}
+            </span>
+          </div>
+          <h4 class="news-title">{{ article.title }}</h4>
+          <p class="news-summary">{{ article.summary }}</p>
+        </a>
+      </div>
+    </div>
+
   </section>
 </main>
