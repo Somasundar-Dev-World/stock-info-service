@@ -2,6 +2,7 @@ package com.example.stockinfo.service;
 
 import com.example.stockinfo.exception.StockNotFoundException;
 import com.example.stockinfo.model.StockResponse;
+import com.example.stockinfo.model.NewsArticle;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -147,8 +148,38 @@ public class StockService {
             if (liveResponse != null) {
                 log.info("[SERVICE] Step 2 - SUCCESS: Live data from Alpha Vantage for '{}' | price={}",
                         resolvedTicker, liveResponse.getPrice());
+                
+                log.info("[SERVICE] Step 2.5 - Attempting Alpha Vantage NEWS_SENTIMENT for '{}'", resolvedTicker);
+                List<NewsArticle> news = tryAlphaVantageNews(resolvedTicker);
+                if (news.isEmpty()) {
+                    log.info("[SERVICE] Step 2.5 - Live news failed or empty, falling back to mock news");
+                    news = getMockNews(resolvedTicker);
+                }
+                
+                StockResponse finalResponse = StockResponse.builder()
+                    .symbol(liveResponse.getSymbol())
+                    .companyName(liveResponse.getCompanyName())
+                    .exchange(liveResponse.getExchange())
+                    .currency(liveResponse.getCurrency())
+                    .price(liveResponse.getPrice())
+                    .open(liveResponse.getOpen())
+                    .high(liveResponse.getHigh())
+                    .low(liveResponse.getLow())
+                    .previousClose(liveResponse.getPreviousClose())
+                    .change(liveResponse.getChange())
+                    .changePercent(liveResponse.getChangePercent())
+                    .volume(liveResponse.getVolume())
+                    .marketCap(liveResponse.getMarketCap())
+                    .peRatio(liveResponse.getPeRatio())
+                    .week52High(liveResponse.getWeek52High())
+                    .week52Low(liveResponse.getWeek52Low())
+                    .latestTradingDay(liveResponse.getLatestTradingDay())
+                    .dataSource(liveResponse.getDataSource())
+                    .news(news)
+                    .build();
+
                 log.info("[SERVICE] ========== END STOCK LOOKUP (Alpha Vantage Live) ==========");
-                return liveResponse;
+                return finalResponse;
             }
             log.info("[SERVICE] Step 2 - Alpha Vantage returned no data for '{}', proceeding to fallback", resolvedTicker);
         }
@@ -163,8 +194,38 @@ public class StockService {
                 if (liveResponse != null) {
                     log.info("[SERVICE] Step 3 - SUCCESS: Live data for searched symbol '{}' | price={}",
                             foundTicker, liveResponse.getPrice());
+                            
+                    log.info("[SERVICE] Step 3.5 - Attempting Alpha Vantage NEWS_SENTIMENT for '{}'", foundTicker);
+                    List<NewsArticle> news = tryAlphaVantageNews(foundTicker);
+                    if (news.isEmpty()) {
+                        log.info("[SERVICE] Step 3.5 - Live news failed or empty, falling back to mock news");
+                        news = getMockNews(foundTicker);
+                    }
+                    
+                    StockResponse finalResponse = StockResponse.builder()
+                        .symbol(liveResponse.getSymbol())
+                        .companyName(liveResponse.getCompanyName())
+                        .exchange(liveResponse.getExchange())
+                        .currency(liveResponse.getCurrency())
+                        .price(liveResponse.getPrice())
+                        .open(liveResponse.getOpen())
+                        .high(liveResponse.getHigh())
+                        .low(liveResponse.getLow())
+                        .previousClose(liveResponse.getPreviousClose())
+                        .change(liveResponse.getChange())
+                        .changePercent(liveResponse.getChangePercent())
+                        .volume(liveResponse.getVolume())
+                        .marketCap(liveResponse.getMarketCap())
+                        .peRatio(liveResponse.getPeRatio())
+                        .week52High(liveResponse.getWeek52High())
+                        .week52Low(liveResponse.getWeek52Low())
+                        .latestTradingDay(liveResponse.getLatestTradingDay())
+                        .dataSource(liveResponse.getDataSource())
+                        .news(news)
+                        .build();
+
                     log.info("[SERVICE] ========== END STOCK LOOKUP (Alpha Vantage Symbol Search) ==========");
-                    return liveResponse;
+                    return finalResponse;
                 }
                 log.info("[SERVICE] Step 3 - Alpha Vantage quote failed for '{}', falling back to mock", foundTicker);
                 resolvedTicker = foundTicker;
@@ -180,8 +241,33 @@ public class StockService {
         if (mockResponse != null) {
             log.info("[SERVICE] Step 4 - SUCCESS: Mock data returned for '{}' | symbol='{}' | price={}",
                     tickerForMock, mockResponse.getSymbol(), mockResponse.getPrice());
+                    
+            List<NewsArticle> news = getMockNews(tickerForMock);
+            
+            StockResponse finalResponse = StockResponse.builder()
+                    .symbol(mockResponse.getSymbol())
+                    .companyName(mockResponse.getCompanyName())
+                    .exchange(mockResponse.getExchange())
+                    .currency(mockResponse.getCurrency())
+                    .price(mockResponse.getPrice())
+                    .open(mockResponse.getOpen())
+                    .high(mockResponse.getHigh())
+                    .low(mockResponse.getLow())
+                    .previousClose(mockResponse.getPreviousClose())
+                    .change(mockResponse.getChange())
+                    .changePercent(mockResponse.getChangePercent())
+                    .volume(mockResponse.getVolume())
+                    .marketCap(mockResponse.getMarketCap())
+                    .peRatio(mockResponse.getPeRatio())
+                    .week52High(mockResponse.getWeek52High())
+                    .week52Low(mockResponse.getWeek52Low())
+                    .latestTradingDay(mockResponse.getLatestTradingDay())
+                    .dataSource(mockResponse.getDataSource())
+                    .news(news)
+                    .build();
+                    
             log.info("[SERVICE] ========== END STOCK LOOKUP (Mock Engine) ==========");
-            return mockResponse;
+            return finalResponse;
         }
 
         log.warn("[SERVICE] Step 4 - Mock engine has no data for '{}'. Throwing StockNotFoundException.", tickerForMock);
@@ -365,6 +451,99 @@ public class StockService {
                     companyName, e.getClass().getSimpleName(), e.getMessage());
             return null;
         }
+    }
+
+    /**
+     * Attempts to fetch news and sentiment from Alpha Vantage NEWS_SENTIMENT endpoint.
+     */
+    private List<NewsArticle> tryAlphaVantageNews(String ticker) {
+        try {
+            String url = UriComponentsBuilder.fromHttpUrl(alphaVantageBaseUrl)
+                    .queryParam("function", "NEWS_SENTIMENT")
+                    .queryParam("tickers", ticker)
+                    .queryParam("limit", 3)
+                    .queryParam("apikey", apiKey)
+                    .build()
+                    .toUriString();
+
+            log.debug("[SERVICE] Alpha Vantage NEWS_SENTIMENT URL: {}", url.replace(apiKey, "***"));
+            long callStart = System.currentTimeMillis();
+            ResponseEntity<String> responseEntity = restTemplate.exchange(
+                    url, HttpMethod.GET, buildHttpEntity(), String.class);
+            log.debug("[SERVICE] Alpha Vantage NEWS_SENTIMENT responded in {}ms", System.currentTimeMillis() - callStart);
+
+            JsonNode root = objectMapper.readTree(responseEntity.getBody());
+
+            if (root.has("Note") || root.has("Information")) {
+                log.warn("[SERVICE] Alpha Vantage NEWS_SENTIMENT rate-limited for '{}'", ticker);
+                return Collections.emptyList();
+            }
+
+            JsonNode feed = root.path("feed");
+            if (feed.isMissingNode() || feed.isEmpty()) {
+                log.info("[SERVICE] Alpha Vantage NEWS_SENTIMENT returned no news for '{}'", ticker);
+                return Collections.emptyList();
+            }
+
+            List<NewsArticle> articles = new ArrayList<>();
+            for (int i = 0; i < Math.min(3, feed.size()); i++) {
+                JsonNode articleNode = feed.get(i);
+                articles.add(new NewsArticle(
+                        articleNode.path("title").asText(),
+                        articleNode.path("url").asText(),
+                        articleNode.path("source").asText(),
+                        articleNode.path("time_published").asText(),
+                        articleNode.path("summary").asText(),
+                        articleNode.path("overall_sentiment_label").asText()
+                ));
+            }
+            return articles;
+
+        } catch (Exception e) {
+            log.warn("[SERVICE] Alpha Vantage NEWS_SENTIMENT failed for '{}': {} - {}",
+                    ticker, e.getClass().getSimpleName(), e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    /**
+     * Returns realistic mock news for a ticker.
+     */
+    private List<NewsArticle> getMockNews(String ticker) {
+        List<NewsArticle> news = new ArrayList<>();
+        String time = LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE) + "T143000";
+        
+        MockStock stock = MOCK_STOCKS.get(ticker);
+        String name = stock != null ? stock.companyName : ticker;
+
+        news.add(new NewsArticle(
+                name + " Announces Strong Earnings Amid Market Volatility",
+                "https://finance.yahoo.com",
+                "Financial Times",
+                time,
+                name + " reported a significant beat on top and bottom lines for the quarter, surprising analysts and sending shares higher in after-hours trading.",
+                "Bullish"
+        ));
+        
+        news.add(new NewsArticle(
+                "Analysts Upgrade " + name + " Citing New Product Cycle",
+                "https://bloomberg.com",
+                "Bloomberg",
+                time,
+                "Wall Street firms have upgraded their price targets for " + name + " following their latest keynote presentation showcasing next-generation AI integrations.",
+                "Bullish"
+        ));
+        
+        news.add(new NewsArticle(
+                "Sector Rotation Could Pose Short-term Risk for " + name,
+                "https://cnbc.com",
+                "CNBC",
+                time,
+                "Despite strong fundamentals, broader macroeconomic trends and sector rotation could weigh on " + name + " over the next few weeks as investors look for value.",
+                "Bearish"
+        ));
+        
+        return news;
     }
 
     /**
