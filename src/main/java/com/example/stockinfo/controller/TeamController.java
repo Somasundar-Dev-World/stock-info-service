@@ -15,7 +15,6 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/v1/team")
-@CrossOrigin(origins = "*") // Allow frontend to call this API
 public class TeamController {
 
     @GetMapping
