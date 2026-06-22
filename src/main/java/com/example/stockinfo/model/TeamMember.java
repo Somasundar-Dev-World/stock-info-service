@@ -8,6 +8,11 @@ public class TeamMember {
     private String designation;
     private String role;
     private String bio;
+    
+    // Detailed fields
+    private String email;
+    private String linkedIn;
+    private String detailedBio;
 
     public TeamMember() {}
 
@@ -29,4 +34,13 @@ public class TeamMember {
 
     public String getBio() { return bio; }
     public void setBio(String bio) { this.bio = bio; }
+
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+
+    public String getLinkedIn() { return linkedIn; }
+    public void setLinkedIn(String linkedIn) { this.linkedIn = linkedIn; }
+
+    public String getDetailedBio() { return detailedBio; }
+    public void setDetailedBio(String detailedBio) { this.detailedBio = detailedBio; }
 }
