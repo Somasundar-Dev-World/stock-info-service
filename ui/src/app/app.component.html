@@ -1,128 +1,19 @@
-<main class="app-container">
-  <!-- Hero Section -->
-  <section class="hero glass-panel">
-    <div class="hero-content">
-      <h1 class="title">Stock<span class="highlight">IQ</span></h1>
-      <p class="subtitle">Real-time market insights at your fingertips</p>
-      
-      <div class="search-box">
-        <input 
-          type="text" 
-          [(ngModel)]="query" 
-          (keyup.enter)="searchStock()"
-          placeholder="Enter ticker (e.g. AAPL) or company name"
-          class="search-input"
-          [disabled]="loading"
-        />
-        <button 
-          (click)="searchStock()" 
-          class="search-button"
-          [disabled]="loading || !query.trim()"
-        >
-          <span *ngIf="!loading">Search</span>
-          <span *ngIf="loading" class="spinner"></span>
-        </button>
-      </div>
-
-      <div *ngIf="error" class="error-message">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-        {{ error }}
+<div class="app-shell">
+  <!-- Top Navigation Bar -->
+  <nav class="navbar glass-panel">
+    <div class="navbar-content">
+      <a routerLink="/home" class="nav-logo">
+        Stock<span class="highlight">IQ</span>
+      </a>
+      <div class="nav-links">
+        <a routerLink="/home" routerLinkActive="active" class="nav-link">Home</a>
+        <a routerLink="/about" routerLinkActive="active" class="nav-link">About</a>
       </div>
     </div>
-  </section>
+  </nav>
 
-  <!-- Results Section -->
-  <section *ngIf="stock" class="results fade-in">
-    <div class="stock-card glass-panel">
-      
-      <div class="card-header">
-        <div class="company-info">
-          <h2 class="symbol">{{ stock.symbol }}</h2>
-          <p class="company-name">{{ stock.companyName }}</p>
-          <span class="exchange-badge">{{ stock.exchange }}</span>
-        </div>
-        <div class="price-info">
-          <h2 class="current-price">
-            {{ stock.price | currency:stock.currency:'symbol':'1.2-2' }}
-          </h2>
-          <div class="price-change" [ngClass]="isPositive(stock.change) ? 'positive' : 'negative'">
-            <svg *ngIf="isPositive(stock.change)" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
-            <svg *ngIf="!isPositive(stock.change)" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"></polyline><polyline points="17 18 23 18 23 12"></polyline></svg>
-            <span>
-              {{ isPositive(stock.change) ? '+' : '' }}{{ stock.change | number:'1.2-2' }} 
-              ({{ stock.changePercent }})
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div class="card-body">
-        <div class="metric-grid">
-          <div class="metric">
-            <span class="metric-label">Open</span>
-            <span class="metric-value">{{ stock.open | currency:stock.currency }}</span>
-          </div>
-          <div class="metric">
-            <span class="metric-label">High</span>
-            <span class="metric-value">{{ stock.high | currency:stock.currency }}</span>
-          </div>
-          <div class="metric">
-            <span class="metric-label">Low</span>
-            <span class="metric-value">{{ stock.low | currency:stock.currency }}</span>
-          </div>
-          <div class="metric">
-            <span class="metric-label">Prev Close</span>
-            <span class="metric-value">{{ stock.previousClose | currency:stock.currency }}</span>
-          </div>
-          
-          <div class="metric">
-            <span class="metric-label">Volume</span>
-            <span class="metric-value">{{ stock.volume | number }}</span>
-          </div>
-          <div class="metric">
-            <span class="metric-label">Market Cap</span>
-            <span class="metric-value">{{ stock.marketCap || 'N/A' }}</span>
-          </div>
-          <div class="metric">
-            <span class="metric-label">P/E Ratio</span>
-            <span class="metric-value">{{ stock.peRatio || 'N/A' }}</span>
-          </div>
-          <div class="metric">
-            <span class="metric-label">52W Range</span>
-            <span class="metric-value">
-              {{ stock.week52Low | currency:stock.currency:'symbol':'1.0-0' }} - {{ stock.week52High | currency:stock.currency:'symbol':'1.0-0' }}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div class="card-footer">
-        <p>Data Source: <strong>{{ stock.dataSource }}</strong></p>
-        <p>Latest Trading Day: {{ stock.latestTradingDay }}</p>
-      </div>
-    </div>
-
-    <!-- News Section -->
-    <div *ngIf="stock.news && stock.news.length > 0" class="news-container fade-in">
-      <h3 class="news-header">Latest Market News</h3>
-      <div class="news-grid">
-        <a *ngFor="let article of stock.news" [href]="article.url" target="_blank" rel="noopener noreferrer" class="news-card glass-panel">
-          <div class="news-meta">
-            <span class="news-source">{{ article.source }}</span>
-            <span class="sentiment-badge" 
-                  [ngClass]="{
-                    'bullish': article.sentimentLabel === 'Bullish' || article.sentimentLabel === 'Somewhat-Bullish',
-                    'bearish': article.sentimentLabel === 'Bearish' || article.sentimentLabel === 'Somewhat-Bearish',
-                    'neutral': article.sentimentLabel === 'Neutral'
-                  }">
-              {{ article.sentimentLabel }}
-            </span>
-          </div>
-          <h4 class="news-title">{{ article.title }}</h4>
-          <p class="news-summary">{{ article.summary }}</p>
-        </a>
-      </div>
-    </div>
-
-  </section>
-</main>
+  <!-- Dynamic Content Area -->
+  <div class="router-container">
+    <router-outlet></router-outlet>
+  </div>
+</div>

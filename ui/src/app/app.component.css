@@ -1,43 +1,39 @@
-.app-container {
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 3rem 1.5rem;
+.app-shell {
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  gap: 3rem;
 }
 
-/* Hero Section */
-.hero {
-  padding: 4rem 2rem;
-  text-align: center;
-  position: relative;
-  overflow: hidden;
+/* Navigation Bar */
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  padding: 1rem 2rem;
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
-.hero::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle at center, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
-  z-index: 0;
+.navbar-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-.hero-content {
-  position: relative;
-  z-index: 1;
-}
-
-.title {
-  font-size: 4rem;
+.nav-logo {
+  font-size: 1.5rem;
   font-weight: 800;
-  margin-bottom: 0.5rem;
-  background: linear-gradient(135deg, #f8fafc 0%, #cbd5e1 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  text-decoration: none;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
 }
 
 .highlight {
@@ -46,321 +42,46 @@
   -webkit-text-fill-color: transparent;
 }
 
-.subtitle {
-  font-size: 1.25rem;
-  color: var(--text-secondary);
-  margin-bottom: 3rem;
-}
-
-/* Search Box */
-.search-box {
+.nav-links {
   display: flex;
-  max-width: 600px;
-  margin: 0 auto;
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid var(--glass-border);
-  border-radius: 9999px;
-  padding: 0.5rem;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
-  transition: all 0.3s ease;
-}
-
-.search-box:focus-within {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2), 0 10px 25px -5px rgba(0, 0, 0, 0.3);
-}
-
-.search-input {
-  flex: 1;
-  background: transparent;
-  border: none;
-  color: var(--text-primary);
-  font-size: 1.125rem;
-  padding: 0.75rem 1.5rem;
-  outline: none;
-  width: 100%;
-}
-
-.search-input::placeholder {
-  color: var(--text-secondary);
-}
-
-.search-button {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  color: white;
-  border: none;
-  border-radius: 9999px;
-  padding: 0 2rem;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  min-width: 120px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.search-button:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
-}
-
-.search-button:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-.spinner {
-  width: 20px;
-  height: 20px;
-  border: 3px solid rgba(255,255,255,0.3);
-  border-radius: 50%;
-  border-top-color: white;
-  animation: spin 1s ease-in-out infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.error-message {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: var(--danger);
-  background: rgba(239, 68, 68, 0.1);
-  padding: 0.75rem 1.5rem;
-  border-radius: 9999px;
-  margin-top: 1.5rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  animation: slideUp 0.3s ease forwards;
-}
-
-/* Results Section */
-.fade-in {
-  animation: slideUp 0.5s ease forwards;
-}
-
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.stock-card {
-  overflow: hidden;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  padding: 2.5rem;
-  border-bottom: 1px solid var(--glass-border);
-  background: linear-gradient(180deg, rgba(255,255,255,0.03) 0%, transparent 100%);
-}
-
-.company-info {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.25rem;
-}
-
-.symbol {
-  font-size: 3rem;
-  font-weight: 800;
-  line-height: 1;
-}
-
-.company-name {
-  font-size: 1.125rem;
-  color: var(--text-secondary);
-}
-
-.exchange-badge {
-  display: inline-block;
-  background: rgba(255,255,255,0.1);
-  padding: 0.25rem 0.75rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  margin-top: 0.5rem;
-}
-
-.price-info {
-  text-align: right;
-}
-
-.current-price {
-  font-size: 3.5rem;
-  font-weight: 800;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-
-.price-change {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.25rem;
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin-top: 0.5rem;
-}
-
-.price-change.positive { color: var(--success); }
-.price-change.negative { color: var(--danger); }
-
-.card-body {
-  padding: 2.5rem;
-}
-
-.metric-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 2rem;
 }
 
-.metric {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.metric-label {
-  font-size: 0.875rem;
+.nav-link {
+  text-decoration: none;
   color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
   font-weight: 600;
+  font-size: 1rem;
+  padding: 0.5rem 0;
+  position: relative;
+  transition: color 0.2s ease;
 }
 
-.metric-value {
-  font-size: 1.25rem;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-}
-
-.card-footer {
-  padding: 1.5rem 2.5rem;
-  background: rgba(0,0,0,0.2);
-  border-top: 1px solid var(--glass-border);
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-}
-
-@media (max-width: 768px) {
-  .card-header {
-    flex-direction: column;
-    gap: 2rem;
-  }
-  .price-info {
-    text-align: left;
-  }
-  .price-change {
-    justify-content: flex-start;
-  }
-  .search-box {
-    flex-direction: column;
-    border-radius: 1rem;
-    padding: 0.5rem;
-  }
-  .search-button {
-    padding: 1rem;
-    width: 100%;
-    border-radius: 0.5rem;
-  }
-  .card-footer {
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-}
-
-/* News Section */
-.news-container {
-  margin-top: 2rem;
-}
-
-.news-header {
-  font-size: 1.5rem;
-  margin-bottom: 1rem;
+.nav-link:hover {
   color: var(--text-primary);
 }
 
-.news-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1.5rem;
+.nav-link.active {
+  color: var(--text-primary);
 }
 
-.news-card {
-  display: flex;
-  flex-direction: column;
-  padding: 1.5rem;
-  text-decoration: none;
-  color: inherit;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  background: linear-gradient(180deg, rgba(255,255,255,0.02) 0%, transparent 100%);
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0%;
+  height: 2px;
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  transition: width 0.3s ease;
 }
 
-.news-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-  border-color: rgba(255, 255, 255, 0.2);
+.nav-link.active::after {
+  width: 100%;
 }
 
-.news-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.75rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.news-source {
-  color: var(--text-secondary);
-}
-
-.sentiment-badge {
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-}
-
-.sentiment-badge.bullish {
-  background: rgba(16, 185, 129, 0.15);
-  color: var(--success);
-}
-
-.sentiment-badge.bearish {
-  background: rgba(239, 68, 68, 0.15);
-  color: var(--danger);
-}
-
-.sentiment-badge.neutral {
-  background: rgba(148, 163, 184, 0.15);
-  color: var(--text-secondary);
-}
-
-.news-title {
-  font-size: 1.125rem;
-  margin-bottom: 0.5rem;
-  line-height: 1.4;
-}
-
-.news-summary {
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+/* Router Container */
+.router-container {
+  flex: 1;
+  width: 100%;
 }
