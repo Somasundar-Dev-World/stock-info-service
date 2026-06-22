@@ -18,7 +18,7 @@
 
   <!-- Team Grid -->
   <section *ngIf="!loading && !error" class="team-grid fade-in">
-    <div *ngFor="let member of teamMembers" class="team-card glass-panel">
+    <a *ngFor="let member of teamMembers" class="team-card glass-panel" [routerLink]="['/contact', member.name.toLocaleLowerCase().replace(' ','-') ]">
       <div class="card-header">
         <h2 class="member-name">{{ member.name }}</h2>
         <span class="role-badge">{{ member.role }}</span>
@@ -27,7 +27,7 @@
         <h3 class="designation">{{ member.designation }}</h3>
         <p class="bio">{{ member.bio }}</p>
       </div>
-    </div>
+    </a>
   </section>
 
   <!-- Contact Info Box -->

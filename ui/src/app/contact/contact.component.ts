@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
+import { RouterModule } from '@angular/router'; // <-- Add this import
 
 interface TeamMember {
   name: string;
@@ -12,7 +13,7 @@ interface TeamMember {
 @Component({
   selector: 'app-contact',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterModule],
   templateUrl: './contact.component.html',
   styleUrls: ['./contact.component.css']
 })
