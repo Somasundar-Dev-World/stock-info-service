@@ -1,0 +1,39 @@
+<main class="app-container">
+  <section class="contact-header fade-in">
+    <h1 class="title">Our <span class="highlight">Leadership Team</span></h1>
+    <p class="subtitle">Meet the people driving the vision behind StockIQ</p>
+  </section>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-state">
+    <div class="spinner"></div>
+    <p>Loading team members...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error" class="error-message">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+    {{ error }}
+  </div>
+
+  <!-- Team Grid -->
+  <section *ngIf="!loading && !error" class="team-grid fade-in">
+    <div *ngFor="let member of teamMembers" class="team-card glass-panel">
+      <div class="card-header">
+        <h2 class="member-name">{{ member.name }}</h2>
+        <span class="role-badge">{{ member.role }}</span>
+      </div>
+      <div class="card-body">
+        <h3 class="designation">{{ member.designation }}</h3>
+        <p class="bio">{{ member.bio }}</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact Info Box -->
+  <section class="contact-info glass-panel fade-in">
+    <h2>Get in Touch</h2>
+    <p>Have questions about our platform or API integrations?</p>
+    <a href="mailto:contact@stockiq.com" class="contact-button">Email Us</a>
+  </section>
+</main>
